@@ -132,14 +132,15 @@
 (function(){
 const C = window.TRYOUT_CONFIG || {}, $ = s => document.querySelector(s);
 // Age eligibility (config.js AGE_RULES). For 8U: born on/after the cutoff is eligible; born
-// earlier asks for the grade, and a 2nd grader born in the exception window is eligible.
+// earlier asks for the grade, and a 1st or 2nd grader born in the exception window is eligible.
 window.tryoutEligibility = function () {
   const age = $('#ageGroup').value, dob = $('[name=dob]').value, grade = $('#grade').value;
   const r = (C.AGE_RULES || {})[age];
   if (!r || !dob) return { ask: false, ok: true, status: '' };
   if (dob >= r.cutoff) return { ask: false, ok: true, status: '' };
   if (!grade) return { ask: true, ok: false, status: '', msg: '' };
-  if (grade === r.exceptionGrade && dob >= r.exceptionFrom) return { ask: true, ok: true, status: 'Grade exception', msg: 'Eligible with a grade exception (' + r.exceptionGrade + ' grade).' };
+  const okGrades = r.exceptionGrades || (r.exceptionGrade ? [r.exceptionGrade] : []);
+  if (okGrades.includes(grade) && dob >= r.exceptionFrom) return { ask: true, ok: true, status: 'Grade exception', msg: 'Eligible with a grade exception (' + grade + ' grade).' };
   return { ask: true, ok: false, status: 'Not eligible', msg: 'Based on birthdate and grade, this player isn’t eligible for ' + age + '. Questions? Contact Coach Kollin.' };
 };
 function eligUI() {
