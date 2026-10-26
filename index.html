@@ -57,6 +57,8 @@
   .done .ball{font-size:40px;margin-bottom:6px}
   footer{text-align:center;color:var(--ink-2);font-size:14px;margin-top:22px}
   .hp{position:absolute;left:-9999px}
+  .note{margin:-4px 0 14px;padding:10px 12px;border-radius:6px;font-size:15px;font-weight:600;background:var(--accent-soft);color:var(--navy)}
+  .note.bad{background:#FBE4E1;color:#8E2219}
 </style>
 </head>
 <body>
@@ -76,6 +78,10 @@
     <div class="row">
       <label>Date of birth<input name="dob" type="date" required></label>
       <label>Age group<select name="ageGroup" id="ageGroup" required><option value="">Select…</option></select></label>
+    </div>
+    <div id="gradeBox" hidden>
+      <label>What grade is your player in this school year?<select name="grade" id="grade"><option value="">Select…</option><option>Pre-K</option><option>Kindergarten</option><option>1st</option><option>2nd</option><option>3rd</option><option>4th</option><option>5th</option><option>6th</option><option>7th</option><option>8th</option></select></label>
+      <div class="note" id="eligNote" hidden></div>
     </div>
     <div class="row">
       <label>Bats<select name="bats" required><option value="">Select…</option><option>Right</option><option>Left</option><option>Switch</option></select></label>
@@ -125,6 +131,24 @@
 <script>
 (function(){
 const C = window.TRYOUT_CONFIG || {}, $ = s => document.querySelector(s);
+// Age eligibility (config.js AGE_RULES). For 8U: born on/after the cutoff is eligible; born
+// earlier asks for the grade, and a 2nd grader born in the exception window is eligible.
+window.tryoutEligibility = function () {
+  const age = $('#ageGroup').value, dob = $('[name=dob]').value, grade = $('#grade').value;
+  const r = (C.AGE_RULES || {})[age];
+  if (!r || !dob) return { ask: false, ok: true, status: '' };
+  if (dob >= r.cutoff) return { ask: false, ok: true, status: '' };
+  if (!grade) return { ask: true, ok: false, status: '', msg: '' };
+  if (grade === r.exceptionGrade && dob >= r.exceptionFrom) return { ask: true, ok: true, status: 'Grade exception', msg: 'Eligible with a grade exception (' + r.exceptionGrade + ' grade).' };
+  return { ask: true, ok: false, status: 'Not eligible', msg: 'Based on birthdate and grade, this player isn’t eligible for ' + age + '. Questions? Contact Coach Kollin.' };
+};
+function eligUI() {
+  const el = window.tryoutEligibility(), box = $('#gradeBox'), note = $('#eligNote');
+  box.hidden = !el.ask; $('#grade').required = el.ask;
+  if (!el.ask) $('#grade').value = '';
+  note.hidden = !el.msg; note.textContent = el.msg || ''; note.className = 'note' + (el.ok ? '' : ' bad');
+}
+['change', 'input'].forEach(ev => ['[name=dob]', '#ageGroup', '#grade'].forEach(sel => $(sel).addEventListener(ev, eligUI)));
 $('#team').textContent = C.TEAM_NAME || 'GS Baseball';
 $('#season').textContent = (C.SEASON || '') + ' Tryouts';
 document.title = (C.TEAM_NAME || 'GS Baseball') + ' Tryouts';
@@ -198,6 +222,8 @@ $('#f').addEventListener('submit', async e => {
   const f = e.target, msg = $('#msg'), btn = $('#btn');
   msg.textContent = '';
   if (!f.checkValidity()) { const bad = f.querySelector(':invalid'); msg.textContent = 'Please fill in: ' + (bad.closest('label')?.childNodes[0].textContent.trim() || 'required fields'); bad.focus(); return; }
+  const elig = window.tryoutEligibility();
+  if (elig.ask && !elig.ok) { msg.textContent = elig.msg || 'Please pick your player’s grade.'; $('#grade').focus(); return; }
   const fd = new FormData(f);
   if (fd.get('website')) return; // bot trap
   btn.disabled = true; btn.textContent = 'Submitting…';
@@ -207,6 +233,7 @@ $('#f').addEventListener('submit', async e => {
       uid, at: serverTimestamp(), seen: false,
       playerFirst: cut(fd.get('playerFirst'), 40), playerLast: cut(fd.get('playerLast'), 40),
       dob: cut(fd.get('dob'), 10), ageGroup: cut(fd.get('ageGroup'), 10),
+      ...(elig.ask ? { grade: cut(fd.get('grade'), 20), eligibility: elig.status } : {}),
       bats: cut(fd.get('bats'), 10), throws: cut(fd.get('throws'), 10),
       positions: cut(fd.getAll('positions').join(', '), 120), currentTeam: cut(fd.get('currentTeam'), 80),
       experience: cut(fd.get('experience'), 30), jerseySize: cut(fd.get('jerseySize'), 10),
