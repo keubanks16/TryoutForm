@@ -141,7 +141,7 @@ if ((C.SESSIONS||[]).length === 1) $('#session').value = C.SESSIONS[0];
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 const C = window.TRYOUT_CONFIG || {};
 const $ = s => document.querySelector(s);
@@ -149,6 +149,26 @@ const $ = s => document.querySelector(s);
 const app = initializeApp(C.FIREBASE);
 const auth = getAuth(app), db = getFirestore(app);
 const ready = signInAnonymously(auth).then(c => c.user.uid);
+
+// Tryout sessions the coach set in the Hub (Tryout Signups → Settings); config.js is the fallback.
+function sessionLabel(x) {
+  const d = x.date ? new Date(x.date + 'T12:00:00') : null;
+  let t = '';
+  if (x.time) { const [hh, mm] = x.time.split(':').map(Number); t = ((hh % 12) || 12) + ':' + String(mm).padStart(2, '0') + ' ' + (hh < 12 ? 'AM' : 'PM'); }
+  const day = d && !isNaN(d) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+  return [day, t].filter(Boolean).join(' · ') + (x.place ? ' — ' + x.place : '');
+}
+getDoc(doc(db, 'config', 'tryoutForm')).then(snap => {
+  const list = snap.exists() && Array.isArray(snap.data().sessions) ? snap.data().sessions : [];
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = list.filter(x => !x.date || x.date >= today);
+  if (!upcoming.length) return;
+  const sel = $('#session'), keep = sel.value;
+  sel.length = 1;
+  for (const x of upcoming) { const l = sessionLabel(x).slice(0, 120); const o = new Option(x.note ? l + ' (' + x.note + ')' : l, l); sel.add(o); }
+  if (upcoming.length === 1) sel.selectedIndex = 1;
+  else if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}).catch(() => {});
 
 // Count this visit: one record per browser, n = times opened.
 const qs = new URLSearchParams(location.search);
