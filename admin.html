@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Tryout Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d0d0d;--card:#181818;--line:#2c2c2c;--text:#f4f4f4;--muted:#a3a3a3;--gold:#f5c400;--ink:#111}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif;padding:24px 16px 48px}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font:700 30px Oswald,sans-serif;text-transform:uppercase;margin:0 0 16px}
+  h1 span{color:var(--gold)}
+  h2{font:600 14px Oswald,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:0 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:620px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat b{display:block;font:700 34px Oswald,sans-serif;color:var(--gold);line-height:1.1}
+  .stat span{color:var(--muted);font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr}}
+  .bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+  .bar .l{width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar .t{flex:1;background:#262626;border-radius:6px;height:10px;overflow:hidden}
+  .bar .t i{display:block;height:100%;background:var(--gold)}
+  .bar .n{width:34px;text-align:right;color:var(--muted)}
+  .chart{display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line)}
+  .chart div{flex:1;background:var(--gold);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+  .chart div.s{background:#fff}
+  .legend{font-size:12px;color:var(--muted);margin-top:6px}
+  input,button{font:16px Inter,sans-serif;border-radius:10px;padding:12px;border:1px solid var(--line)}
+  input{background:#0f0f0f;color:var(--text);width:100%}
+  button{background:var(--gold);color:var(--ink);border:0;font-weight:700;cursor:pointer}
+  .login{max-width:360px;margin:60px auto;display:grid;gap:10px}
+  .tablewrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;white-space:nowrap}
+  th{color:var(--muted);font-weight:600}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tools button,.tools a{font-size:14px;padding:9px 12px}
+  .tools a{background:#262626;color:var(--text);text-decoration:none;border-radius:10px}
+  .err{color:#ff6b6b}
+  #app{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="login" id="login">
+    <h1>Tryout <span>Admin</span></h1>
+    <input id="key" type="password" placeholder="Admin password">
+    <button id="go">View dashboard</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="app">
+    <h1>Tryout <span>Dashboard</span></h1>
+    <div class="stats">
+      <div class="stat"><b id="tV">0</b><span>Link visits</span></div>
+      <div class="stat"><b id="tU">0</b><span>Unique visitors</span></div>
+      <div class="stat"><b id="tS">0</b><span>Registrations</span></div>
+      <div class="stat"><b id="tC">0%</b><span>Visitor → signup</span></div>
+    </div>
+    <div class="card">
+      <h2>Last 14 days</h2>
+      <div class="chart" id="chart"></div>
+      <div class="legend">Gold = visits · White = registrations</div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>By age group</h2><div id="age"></div></div>
+      <div class="card"><h2>By session</h2><div id="sess"></div></div>
+      <div class="card"><h2>Where visits came from</h2><div id="src"></div></div>
+      <div class="card"><h2>Devices</h2><div id="dev"></div></div>
+    </div>
+    <div class="card">
+      <h2>Registrations</h2>
+      <div class="tools">
+        <button id="refresh">Refresh</button>
+        <button id="csv">Download CSV</button>
+        <a id="sheet" target="_blank" rel="noopener">Open Google Sheet</a>
+      </div>
+      <div class="tablewrap"><table id="tbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  const C = window.TRYOUT_CONFIG || {}, $ = s => document.querySelector(s);
+  let data = null;
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let saved = ''; try { saved = sessionStorage.getItem('gs_admin') || ''; } catch(e){}
+
+  async function load(key){
+    $('#err').textContent = '';
+    try {
+      const r = await fetch(`${C.API_URL}?action=stats&key=${encodeURIComponent(key)}`);
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error);
+      try { sessionStorage.setItem('gs_admin', key); } catch(e){}
+      data = j; render();
+      $('#login').style.display = 'none'; $('#app').style.display = 'block';
+    } catch(e) { $('#err').textContent = e.message || 'Could not load'; }
+  }
+  function bars(el, obj){
+    const ent = Object.entries(obj).filter(([k])=>k).sort((a,b)=>b[1]-a[1]);
+    const max = Math.max(1, ...ent.map(e=>e[1]));
+    $(el).innerHTML = ent.length ? ent.map(([k,v])=>`<div class="bar"><span class="l">${esc(k)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="n">${v}</span></div>`).join('') : '<span style="color:var(--muted)">Nothing yet</span>';
+  }
+  function render(){
+    const t = data.totals;
+    $('#tV').textContent = t.visits; $('#tU').textContent = t.uniqueVisitors; $('#tS').textContent = t.submissions;
+    $('#tC').textContent = t.uniqueVisitors ? Math.round(t.submissions / t.uniqueVisitors * 100) + '%' : '0%';
+    const days = [];
+    for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d.toLocaleDateString('en-CA')); }
+    const max = Math.max(1, ...days.map(d => (data.byDay[d]||{}).visits || 0));
+    $('#chart').innerHTML = days.map(d => { const v = data.byDay[d] || {visits:0,subs:0};
+      return `<div title="${d}: ${v.visits} visits" style="height:${v.visits/max*100}%"></div><div class="s" title="${d}: ${v.subs} signups" style="height:${v.subs/max*100}%;flex:.5"></div>`; }).join('');
+    bars('#age', data.byAge); bars('#sess', data.bySession); bars('#src', data.bySource); bars('#dev', data.byDevice);
+    $('#sheet').href = data.sheetUrl;
+    const show = [0,1,2,4,7,11,12,13,15,16];
+    $('#tbl').innerHTML = '<tr>' + show.map(i=>`<th>${esc(data.header[i])}</th>`).join('') + '</tr>' +
+      (data.submissions.length ? data.submissions.map(r => '<tr>' + show.map(i=>`<td>${esc(r[i])}</td>`).join('') + '</tr>').join('') : `<tr><td colspan="${show.length}" style="color:var(--muted)">No registrations yet</td></tr>`);
+  }
+  $('#go').onclick = () => load($('#key').value);
+  $('#key').onkeydown = e => { if (e.key === 'Enter') load($('#key').value); };
+  $('#refresh').onclick = () => { try { load(sessionStorage.getItem('gs_admin')); } catch(e){} };
+  $('#csv').onclick = () => {
+    const rows = [data.header].concat(data.submissions);
+    const csv = rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+    a.download = 'tryout-registrations.csv'; a.click();
+  };
+  if (saved) load(saved);
+})();
+</script>
+</body>
+</html>
