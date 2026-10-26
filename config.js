@@ -8,9 +8,9 @@ window.TRYOUT_CONFIG = {
     "Sunday, Dec 6 — 2:00 PM · TC Rec Fields, Butler"
   ],
   // Birthdate rules per age group. Born on/after cutoff = eligible. Born earlier: the form asks the
-  // grade; exceptionGrade with a birthdate on/after exceptionFrom = eligible (grade exception).
+  // grade; any of exceptionGrades with a birthdate on/after exceptionFrom = eligible (grade exception).
   AGE_RULES: {
-    "8U": { cutoff: "2018-05-01", exceptionFrom: "2018-01-01", exceptionGrade: "2nd" }
+    "8U": { cutoff: "2018-05-01", exceptionFrom: "2018-01-01", exceptionGrades: ["1st", "2nd"] }
   },
   AGE_GROUPS: ["8U", "9U", "10U", "11U", "12U", "13U", "14U"],
   // The Hub's Firebase project (public identifiers; the database rules protect the data)
