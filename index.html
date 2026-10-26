@@ -158,7 +158,15 @@ function sessionLabel(x) {
   return [day, t].filter(Boolean).join(' · ') + (x.place ? ' — ' + x.place : '');
 }
 getDoc(doc(db, 'config', 'tryoutForm')).then(snap => {
-  const list = snap.exists() && Array.isArray(snap.data().sessions) ? snap.data().sessions : [];
+  const v = snap.exists() ? snap.data() : {};
+  // Age groups set in the Hub replace the built-in list.
+  if (Array.isArray(v.ageGroups) && v.ageGroups.length) {
+    const sel = $('#ageGroup'), keep = sel.value;
+    sel.length = 1;
+    for (const a of v.ageGroups) sel.add(new Option(String(a).slice(0, 10), String(a).slice(0, 10)));
+    if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+  }
+  const list = Array.isArray(v.sessions) ? v.sessions : [];
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = list.filter(x => !x.date || x.date >= today);
   if (!upcoming.length) return;
