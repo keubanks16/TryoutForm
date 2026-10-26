@@ -159,6 +159,8 @@ function sessionLabel(x) {
 }
 getDoc(doc(db, 'config', 'tryoutForm')).then(snap => {
   const v = snap.exists() ? snap.data() : {};
+  // Heading set in the Hub (e.g. "8U Spring 2027") replaces the default banner text.
+  if (typeof v.title === 'string' && v.title.trim()) $('#season').textContent = v.title.trim().slice(0, 40);
   // Age groups set in the Hub replace the built-in list.
   if (Array.isArray(v.ageGroups) && v.ageGroups.length) {
     const sel = $('#ageGroup'), keep = sel.value;
