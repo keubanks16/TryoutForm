@@ -102,55 +102,72 @@
 </div>
 
 <script src="config.js"></script>
-<script>
-(function(){
-  const C = window.TRYOUT_CONFIG || {};
-  const $ = s => document.querySelector(s);
-  $('#team').textContent = C.TEAM_NAME || 'GS Baseball';
-  $('#season').textContent = (C.SEASON || '') + ' Tryouts';
-  document.title = (C.TEAM_NAME || 'GS Baseball') + ' Tryouts';
-  (C.AGE_GROUPS||[]).forEach(a => $('#ageGroup').add(new Option(a,a)));
-  (C.SESSIONS||[]).forEach(s => $('#session').add(new Option(s,s)));
-  ['P','C','1B','2B','SS','3B','LF','CF','RF','Utility'].forEach(p=>{
-    $('#positions').insertAdjacentHTML('beforeend',`<label><input type="checkbox" name="positions" value="${p}"><span>${p}</span></label>`);
-  });
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
-  // Visitor tracking (anonymous id per browser)
-  let vid; try { vid = localStorage.getItem('gs_vid'); if(!vid){ vid = crypto.randomUUID(); localStorage.setItem('gs_vid', vid);} } catch(e){ vid = 'anon-' + Math.random().toString(36).slice(2); }
-  const qs = new URLSearchParams(location.search);
-  function post(payload){
-    return fetch(C.API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
-  }
-  if (C.API_URL && C.API_URL.startsWith('http')) {
-    post({action:'visit', vid, ref: document.referrer || '', src: qs.get('src') || qs.get('utm_source') || '', ua: navigator.userAgent, screen: screen.width+'x'+screen.height}).catch(()=>{});
-  }
+const C = window.TRYOUT_CONFIG || {};
+const $ = s => document.querySelector(s);
+$('#team').textContent = C.TEAM_NAME || 'GS Baseball';
+$('#season').textContent = (C.SEASON || '') + ' Tryouts';
+document.title = (C.TEAM_NAME || 'GS Baseball') + ' Tryouts';
+(C.AGE_GROUPS||[]).forEach(a => $('#ageGroup').add(new Option(a,a)));
+(C.SESSIONS||[]).forEach(s => $('#session').add(new Option(s,s)));
+if ((C.SESSIONS||[]).length === 1) $('#session').value = C.SESSIONS[0];
+['P','C','1B','2B','SS','3B','LF','CF','RF','Utility'].forEach(p=>{
+  $('#positions').insertAdjacentHTML('beforeend',`<label><input type="checkbox" name="positions" value="${p}"><span>${p}</span></label>`);
+});
 
-  $('#f').addEventListener('submit', async e=>{
-    e.preventDefault();
-    const f = e.target, msg = $('#msg'), btn = $('#btn');
-    msg.textContent = '';
-    if (!f.checkValidity()) { const bad = f.querySelector(':invalid'); msg.textContent = 'Please fill in: ' + (bad.closest('label')?.childNodes[0].textContent.trim() || 'required fields'); bad.focus(); return; }
-    const fd = new FormData(f);
-    if (fd.get('website')) return; // bot
-    const data = {};
-    for (const [k,v] of fd) { if (k==='positions') continue; data[k]=v; }
-    data.positions = fd.getAll('positions').join(', ');
-    data.waiver = fd.get('waiver') ? 'Yes' : 'No';
-    data.mediaOk = fd.get('mediaOk') ? 'Yes' : 'No';
-    btn.disabled = true; btn.textContent = 'Submitting…';
-    try {
-      const r = await post({action:'submit', vid, data});
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Error');
-      f.style.display='none';
-      $('#doneText').textContent = `${data.playerFirst} is signed up for ${data.session}. We'll text or email ${data.parentName.split(' ')[0]} with details.`;
-      $('#done').style.display='block'; window.scrollTo(0,0);
-    } catch(err) {
-      msg.textContent = 'Something went wrong — please try again.';
-      btn.disabled = false; btn.textContent = 'Submit Registration';
-    }
-  });
-})();
+const app = initializeApp(C.FIREBASE);
+const auth = getAuth(app), db = getFirestore(app);
+const ready = signInAnonymously(auth).then(c => c.user.uid);
+
+// Count this visit: one record per browser, n = times opened.
+const qs = new URLSearchParams(location.search);
+const ua = navigator.userAgent;
+const device = /iPhone|iPad/i.test(ua) ? 'iPhone/iPad' : /Android/i.test(ua) ? 'Android' : /Mac/i.test(ua) ? 'Mac' : /Windows/i.test(ua) ? 'Windows' : 'Other';
+ready.then(async uid => {
+  const ref = doc(db, 'tryoutFormVisits', uid);
+  try { await updateDoc(ref, { last: serverTimestamp(), n: increment(1) }); }
+  catch (e) {
+    try { await setDoc(ref, { uid, first: serverTimestamp(), last: serverTimestamp(), n: 1,
+      ref: (document.referrer || '').slice(0, 200), src: (qs.get('src') || qs.get('utm_source') || '').slice(0, 40), device }); } catch (_) {}
+  }
+}).catch(() => {});
+
+const cut = (v, n) => String(v || '').trim().slice(0, n);
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target, msg = $('#msg'), btn = $('#btn');
+  msg.textContent = '';
+  if (!f.checkValidity()) { const bad = f.querySelector(':invalid'); msg.textContent = 'Please fill in: ' + (bad.closest('label')?.childNodes[0].textContent.trim() || 'required fields'); bad.focus(); return; }
+  const fd = new FormData(f);
+  if (fd.get('website')) return; // bot trap
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const uid = await ready;
+    const data = {
+      uid, at: serverTimestamp(), seen: false,
+      playerFirst: cut(fd.get('playerFirst'), 40), playerLast: cut(fd.get('playerLast'), 40),
+      dob: cut(fd.get('dob'), 10), ageGroup: cut(fd.get('ageGroup'), 10),
+      bats: cut(fd.get('bats'), 10), throws: cut(fd.get('throws'), 10),
+      positions: cut(fd.getAll('positions').join(', '), 120), currentTeam: cut(fd.get('currentTeam'), 80),
+      experience: cut(fd.get('experience'), 30), jerseySize: cut(fd.get('jerseySize'), 10),
+      parentName: cut(fd.get('parentName'), 80), phone: cut(fd.get('phone'), 30), email: cut(fd.get('email'), 120),
+      city: cut(fd.get('city'), 60), session: cut(fd.get('session'), 120), notes: cut(fd.get('notes'), 1000),
+      source: cut(fd.get('source'), 40), waiver: !!fd.get('waiver'), mediaOk: !!fd.get('mediaOk')
+    };
+    await addDoc(collection(db, 'tryoutSignups'), data);
+    f.style.display = 'none';
+    $('#doneText').textContent = `${data.playerFirst} is signed up for ${data.session}. We'll text or email ${data.parentName.split(' ')[0]} with details.`;
+    $('#done').style.display = 'block'; window.scrollTo(0, 0);
+  } catch (err) {
+    console.error(err);
+    msg.textContent = 'Something went wrong — please try again.';
+    btn.disabled = false; btn.textContent = 'Submit Registration';
+  }
+});
 </script>
 </body>
 </html>
