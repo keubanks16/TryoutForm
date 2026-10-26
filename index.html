@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GS Baseball Tryouts</title>
+<meta name="theme-color" content="#0d0d0d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d0d0d;--card:#181818;--line:#2c2c2c;--text:#f4f4f4;--muted:#a3a3a3;--gold:#f5c400;--gold-ink:#111;--err:#ff6b6b;--ok:#3ddc84}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Inter,system-ui,sans-serif;padding:0 16px 48px}
+  header{max-width:640px;margin:0 auto;padding:36px 0 20px;text-align:center}
+  .badge{display:inline-block;background:var(--gold);color:var(--gold-ink);font:700 12px Oswald,sans-serif;letter-spacing:.12em;padding:4px 10px;border-radius:4px;text-transform:uppercase}
+  h1{font:700 clamp(32px,9vw,52px)/1 Oswald,sans-serif;text-transform:uppercase;margin:14px 0 8px;letter-spacing:.02em}
+  h1 span{color:var(--gold)}
+  header p{color:var(--muted);margin:0}
+  form{max-width:640px;margin:0 auto}
+  fieldset{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px 16px 6px;margin:0 0 16px}
+  legend{font:600 14px Oswald,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);padding:0 6px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.row{grid-template-columns:1fr}}
+  label{display:block;font-size:14px;font-weight:600;margin-bottom:14px}
+  label small{font-weight:400;color:var(--muted)}
+  input,select,textarea{width:100%;margin-top:6px;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;font:16px Inter,sans-serif}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);border-color:transparent}
+  textarea{min-height:80px;resize:vertical}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .chips label{margin:0;font-weight:500}
+  .chips input{display:none}
+  .chips span{display:inline-block;padding:8px 14px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:14px}
+  .chips input:checked+span{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
+  .check{display:flex;gap:10px;align-items:flex-start;font-weight:500}
+  .check input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--gold)}
+  button{width:100%;background:var(--gold);color:var(--gold-ink);border:0;border-radius:12px;padding:16px;font:700 18px Oswald,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+  button:disabled{opacity:.6}
+  .msg{max-width:640px;margin:14px auto 0;text-align:center;color:var(--err);min-height:1.5em}
+  .done{display:none;max-width:640px;margin:40px auto;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px 20px}
+  .done h2{font:700 30px Oswald,sans-serif;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+  .hp{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header>
+  <div class="badge" id="season">Tryouts</div>
+  <h1><span id="team">GS Baseball</span><br>Tryout Registration</h1>
+  <p>Fill this out once per player. We'll reach out with details before your session.</p>
+</header>
+
+<form id="f" novalidate>
+  <fieldset>
+    <legend>Player</legend>
+    <div class="row">
+      <label>First name<input name="playerFirst" required autocomplete="off"></label>
+      <label>Last name<input name="playerLast" required autocomplete="off"></label>
+    </div>
+    <div class="row">
+      <label>Date of birth<input name="dob" type="date" required></label>
+      <label>Age group<select name="ageGroup" id="ageGroup" required><option value="">Select…</option></select></label>
+    </div>
+    <div class="row">
+      <label>Bats<select name="bats" required><option value="">Select…</option><option>Right</option><option>Left</option><option>Switch</option></select></label>
+      <label>Throws<select name="throws" required><option value="">Select…</option><option>Right</option><option>Left</option></select></label>
+    </div>
+    <label>Positions <small>(pick all that apply)</small></label>
+    <div class="chips" id="positions"></div>
+    <div class="row">
+      <label>Current / last team <small>(optional)</small><input name="currentTeam"></label>
+      <label>Years playing<select name="experience"><option value="">Select…</option><option>First year</option><option>1–2 years</option><option>3–4 years</option><option>5+ years</option></select></label>
+    </div>
+    <label>Jersey size<select name="jerseySize"><option value="">Select…</option><option>YS</option><option>YM</option><option>YL</option><option>YXL</option><option>AS</option><option>AM</option><option>AL</option><option>AXL</option></select></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Parent / Guardian</legend>
+    <label>Full name<input name="parentName" required autocomplete="name"></label>
+    <div class="row">
+      <label>Phone<input name="phone" type="tel" required autocomplete="tel"></label>
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+    </div>
+    <label>City / town<input name="city" autocomplete="address-level2"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Tryout</legend>
+    <label>Which session?<select name="session" id="session" required><option value="">Select…</option></select></label>
+    <label>Anything coaches should know? <small>(injuries, allergies, conflicts)</small><textarea name="notes"></textarea></label>
+    <label>How did you hear about us?<select name="source"><option value="">Select…</option><option>Friend / teammate</option><option>Facebook</option><option>Instagram</option><option>Flyer</option><option>Other</option></select></label>
+    <label class="check"><input type="checkbox" name="waiver" required> <span>I'm the parent/guardian and give permission for my player to participate in tryouts. I understand baseball involves risk of injury.</span></label>
+    <label class="check"><input type="checkbox" name="mediaOk"> <span>OK to use photos/video of my player on team pages.</span></label>
+    <input class="hp" name="website" tabindex="-1" autocomplete="off">
+  </fieldset>
+
+  <button id="btn" type="submit">Submit Registration</button>
+  <div class="msg" id="msg"></div>
+</form>
+
+<div class="done" id="done">
+  <h2>You're registered!</h2>
+  <p id="doneText">See you at tryouts.</p>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  const C = window.TRYOUT_CONFIG || {};
+  const $ = s => document.querySelector(s);
+  $('#team').textContent = C.TEAM_NAME || 'GS Baseball';
+  $('#season').textContent = (C.SEASON || '') + ' Tryouts';
+  document.title = (C.TEAM_NAME || 'GS Baseball') + ' Tryouts';
+  (C.AGE_GROUPS||[]).forEach(a => $('#ageGroup').add(new Option(a,a)));
+  (C.SESSIONS||[]).forEach(s => $('#session').add(new Option(s,s)));
+  ['P','C','1B','2B','SS','3B','LF','CF','RF','Utility'].forEach(p=>{
+    $('#positions').insertAdjacentHTML('beforeend',`<label><input type="checkbox" name="positions" value="${p}"><span>${p}</span></label>`);
+  });
+
+  // Visitor tracking (anonymous id per browser)
+  let vid; try { vid = localStorage.getItem('gs_vid'); if(!vid){ vid = crypto.randomUUID(); localStorage.setItem('gs_vid', vid);} } catch(e){ vid = 'anon-' + Math.random().toString(36).slice(2); }
+  const qs = new URLSearchParams(location.search);
+  function post(payload){
+    return fetch(C.API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+  }
+  if (C.API_URL && C.API_URL.startsWith('http')) {
+    post({action:'visit', vid, ref: document.referrer || '', src: qs.get('src') || qs.get('utm_source') || '', ua: navigator.userAgent, screen: screen.width+'x'+screen.height}).catch(()=>{});
+  }
+
+  $('#f').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = e.target, msg = $('#msg'), btn = $('#btn');
+    msg.textContent = '';
+    if (!f.checkValidity()) { const bad = f.querySelector(':invalid'); msg.textContent = 'Please fill in: ' + (bad.closest('label')?.childNodes[0].textContent.trim() || 'required fields'); bad.focus(); return; }
+    const fd = new FormData(f);
+    if (fd.get('website')) return; // bot
+    const data = {};
+    for (const [k,v] of fd) { if (k==='positions') continue; data[k]=v; }
+    data.positions = fd.getAll('positions').join(', ');
+    data.waiver = fd.get('waiver') ? 'Yes' : 'No';
+    data.mediaOk = fd.get('mediaOk') ? 'Yes' : 'No';
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    try {
+      const r = await post({action:'submit', vid, data});
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Error');
+      f.style.display='none';
+      $('#doneText').textContent = `${data.playerFirst} is signed up for ${data.session}. We'll text or email ${data.parentName.split(' ')[0]} with details.`;
+      $('#done').style.display='block'; window.scrollTo(0,0);
+    } catch(err) {
+      msg.textContent = 'Something went wrong — please try again.';
+      btn.disabled = false; btn.textContent = 'Submit Registration';
+    }
+  });
+})();
+</script>
+</body>
+</html>
