@@ -107,7 +107,6 @@
     <label>Anything coaches should know? <small>(injuries, allergies, conflicts)</small><textarea name="notes"></textarea></label>
     <label>How did you hear about us?<select name="source"><option value="">Select…</option><option>Friend / teammate</option><option>Facebook</option><option>Instagram</option><option>Flyer</option><option>Other</option></select></label>
     <label class="check"><input type="checkbox" name="waiver" required> <span>I'm the parent/guardian and give permission for my player to participate in tryouts. I understand baseball involves risk of injury.</span></label>
-    <label class="check"><input type="checkbox" name="mediaOk"> <span>OK to use photos/video of my player on team pages.</span></label>
     <input class="hp" name="website" tabindex="-1" autocomplete="off">
   </fieldset>
 
@@ -184,7 +183,7 @@ $('#f').addEventListener('submit', async e => {
       experience: cut(fd.get('experience'), 30), jerseySize: cut(fd.get('jerseySize'), 10),
       parentName: cut(fd.get('parentName'), 80), phone: cut(fd.get('phone'), 30), email: cut(fd.get('email'), 120),
       city: cut(fd.get('city'), 60), session: cut(fd.get('session'), 120), notes: cut(fd.get('notes'), 1000),
-      source: cut(fd.get('source'), 40), waiver: !!fd.get('waiver'), mediaOk: !!fd.get('mediaOk')
+      source: cut(fd.get('source'), 40), waiver: !!fd.get('waiver')
     };
     await addDoc(collection(db, 'tryoutSignups'), data);
     f.style.display = 'none';
