@@ -17,3 +17,8 @@ Form link: `https://tryouts.stingerz-baseball.com`
 ## Tracking where visitors came from
 Add `?src=` to links you share and the Hub groups visits by it:
 `tryouts.stingerz-baseball.com/?src=facebook`, `?src=flyer`, `?src=teamtext`
+
+## Started but didn't finish
+- While someone types, the form records **how far they got** on their visit record (which fields have an answer and the last one they touched, never what they typed). The Hub shows "Started typing", "Didn't finish" and "Where they stopped".
+- **Save for later** (button under Submit): only when a family taps it, their answers are kept on that phone and saved to `tryoutDrafts`, so they can finish later and the coach can see them in the Hub. Submitting, or "Delete my saved answers", removes them.
+- Needs the latest `firestore.rules` from the Hub repo.

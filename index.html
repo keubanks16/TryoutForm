@@ -59,6 +59,14 @@
   .hp{position:absolute;left:-9999px}
   .note{margin:-4px 0 14px;padding:10px 12px;border-radius:6px;font-size:15px;font-weight:600;background:var(--accent-soft);color:var(--navy)}
   .note.bad{background:#FBE4E1;color:#8E2219}
+  .save{max-width:640px;margin:0 auto;padding:0 16px}
+  .save .box{background:var(--surface);border:1px solid var(--line);padding:12px 14px;font-size:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+  .save .box span{flex:1;min-width:200px}
+  .link{background:none;border:0;padding:0;width:auto;color:var(--accent);font:600 15px var(--body);text-transform:none;letter-spacing:0;text-decoration:underline;cursor:pointer;clip-path:none}
+  .link:active{background:none}
+  button.later{background:var(--surface);color:var(--navy);border:2px solid var(--navy);margin-top:10px;font-size:17px;padding:14px}
+  button.later:active{background:var(--accent-soft)}
 </style>
 </head>
 <body>
@@ -67,6 +75,8 @@
   <div class="badge" id="season">Tryouts</div>
   <h1><span id="team">GS Baseball</span><br>Tryout Registration</h1>
 </header>
+
+<div class="save" id="saveBar" hidden><div class="box"><span id="saveText"></span><button type="button" class="link" id="forget">Delete my saved answers</button></div></div>
 
 <form id="f" novalidate>
   <fieldset>
@@ -116,6 +126,8 @@
   </fieldset>
 
   <button id="btn" type="submit">Submit Registration</button>
+  <button id="later" type="button" class="later">Save for later</button>
+  <p style="font-size:14px;color:var(--ink-2);text-align:center;margin:8px 0 0">Not ready? <b>Save for later</b> keeps your answers on this phone so you can finish next time. Coach Kollin can also see what you saved, so he can help you finish.</p>
   <div class="msg" id="msg"></div>
 </form>
 
@@ -165,7 +177,7 @@ if ((C.SESSIONS||[]).length === 1) $('#session').value = C.SESSIONS[0];
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 const C = window.TRYOUT_CONFIG || {};
 const $ = s => document.querySelector(s);
@@ -216,8 +228,86 @@ ready.then(async uid => {
       ref: (document.referrer || '').slice(0, 200), src: (qs.get('src') || qs.get('utm_source') || '').slice(0, 40), device }); } catch (_) {}
   }
 }).catch(() => {});
+const visitSaved = ready.then(() => new Promise(r => setTimeout(r, 1500))); // let the visit record be created first
 
 const cut = (v, n) => String(v || '').trim().slice(0, n);
+const form = $('#f');
+// The answers currently in the form (the same names the registration uses).
+const FIELDS = ['playerFirst', 'playerLast', 'dob', 'ageGroup', 'grade', 'bats', 'throws', 'positions', 'currentTeam', 'experience', 'jerseySize',
+  'parentName', 'phone', 'email', 'city', 'session', 'notes', 'source', 'waiver'];
+function answers() {
+  const fd = new FormData(form), out = {};
+  for (const k of FIELDS) {
+    if (k === 'positions') { const v = fd.getAll('positions').join(', '); if (v) out[k] = cut(v, 120); }
+    else if (k === 'waiver') { if (fd.get('waiver')) out[k] = true; }
+    else { const v = cut(fd.get(k), k === 'notes' ? 1000 : 120); if (v) out[k] = v; }
+  }
+  return out;
+}
+function fill(a) {
+  for (const [k, v] of Object.entries(a || {})) {
+    if (k === 'positions') { const on = String(v).split(',').map(x => x.trim()); form.querySelectorAll('[name=positions]').forEach(c => { c.checked = on.includes(c.value); }); continue; }
+    if (k === 'waiver') { form.waiver.checked = !!v; continue; }
+    const el = form.elements[k];
+    if (!el) continue;
+    if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v)) el.add(new Option(v, v));
+    el.value = v;
+  }
+  ['change'].forEach(ev => ['[name=dob]', '#ageGroup', '#grade'].forEach(sel => $(sel).dispatchEvent(new Event(ev))));
+}
+
+// 1) How far people get (field names only, never what they typed), so the coach can see where people stop.
+let started = false, lastField = '', progT = 0;
+try { started = localStorage.getItem('gs-tryout-started') === '1'; } catch (_) {}
+function progress() {
+  clearTimeout(progT);
+  progT = setTimeout(async () => {
+    const uid = await ready; await visitSaved;
+    const data = { filled: Object.keys(answers()).slice(0, 30), lastField: lastField.slice(0, 30), progAt: serverTimestamp(), saved: saveOn };
+    if (!started) { data.started = serverTimestamp(); }
+    try { await updateDoc(doc(db, 'tryoutFormVisits', uid), data); if (!started) { started = true; try { localStorage.setItem('gs-tryout-started', '1'); } catch (_) {} } } catch (_) {}
+  }, 1500);
+}
+
+// 2) Save for later: only when the family asks. Kept on this phone and shared with the coach.
+const LS = 'gs-tryout-draft';
+let saveOn = false, saveT = 0;
+try { saveOn = !!localStorage.getItem(LS); } catch (_) {}
+function bar(text) { $('#saveBar').hidden = !text; $('#saveText').textContent = text || ''; }
+async function saveDraft(show) {
+  const a = answers();
+  try { localStorage.setItem(LS, JSON.stringify(a)); } catch (_) {}
+  try {
+    const uid = await ready;
+    await setDoc(doc(db, 'tryoutDrafts', uid), { uid, at: serverTimestamp(), data: a, filled: Object.keys(a) });
+    if (show) bar('✓ Saved. Open this page on this phone to finish anytime. Your answers keep saving as you type.');
+  } catch (_) { if (show) bar('✓ Saved on this phone. Open this page here to finish.'); }
+  progress();
+}
+// Bring back saved answers.
+(async () => {
+  let a = null;
+  try { a = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (_) {}
+  if (!a) { try { const uid = await ready; const snap = await getDoc(doc(db, 'tryoutDrafts', uid)); if (snap.exists()) { a = snap.data().data; saveOn = true; } } catch (_) {} }
+  if (a && Object.keys(a).length) { fill(a); saveOn = true; bar('Welcome back! We filled in the answers you saved. Finish below and tap Submit.'); }
+})();
+form.addEventListener('input', ev => { const n = ev.target && ev.target.name; if (!n || n === 'website') return; lastField = n; progress(); if (saveOn) { clearTimeout(saveT); saveT = setTimeout(() => saveDraft(false), 1200); } });
+form.addEventListener('change', ev => { const n = ev.target && ev.target.name; if (!n || n === 'website') return; lastField = n; progress(); if (saveOn) { clearTimeout(saveT); saveT = setTimeout(() => saveDraft(false), 800); } });
+$('#later').addEventListener('click', async () => {
+  if (!Object.keys(answers()).length) { $('#msg').textContent = 'Type at least one answer first.'; return; }
+  $('#msg').textContent = ''; saveOn = true;
+  await saveDraft(true);
+  window.scrollTo(0, 0);
+});
+async function forgetDraft() {
+  saveOn = false; clearTimeout(saveT);
+  try { localStorage.removeItem(LS); } catch (_) {}
+  try { const uid = await ready; await deleteDoc(doc(db, 'tryoutDrafts', uid)); } catch (_) {}
+}
+$('#forget').addEventListener('click', async () => {
+  if (!confirm('Delete your saved answers? The form will be cleared.')) return;
+  await forgetDraft(); form.reset(); bar('');
+});
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target, msg = $('#msg'), btn = $('#btn');
@@ -243,6 +333,7 @@ $('#f').addEventListener('submit', async e => {
       source: cut(fd.get('source'), 40), waiver: !!fd.get('waiver')
     };
     await addDoc(collection(db, 'tryoutSignups'), data);
+    await forgetDraft(); bar('');
     f.style.display = 'none';
     $('#doneText').textContent = `${data.playerFirst} is signed up for ${data.session}. We'll text or email ${data.parentName.split(' ')[0]} with details.`;
     $('#done').style.display = 'block'; window.scrollTo(0, 0);
