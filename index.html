@@ -19,7 +19,13 @@
   body{margin:0;background:var(--ground);color:var(--ink);font:17px/1.45 var(--body);padding:0 0 48px;min-height:100vh}
   header{background:var(--navy);color:#fff;text-align:center;padding:calc(28px + env(safe-area-inset-top,0px)) 16px 34px;margin-bottom:-14px;
     clip-path:polygon(0 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,22px 100%,0 calc(100% - 22px));border-bottom:4px solid var(--carolina)}
+  .flyer{background:var(--navy);padding:calc(12px + env(safe-area-inset-top,0px)) 12px 0;text-align:center}
+  .flyer a{display:block;max-width:560px;margin:0 auto;-webkit-tap-highlight-color:transparent}
+  .flyer img{width:100%;height:auto;display:block;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+  .flyer small{display:block;color:#C9D6EA;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:8px 0 2px}
   header img{width:118px;height:auto;display:block;margin:0 auto 12px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+  .flyer+header{padding-top:18px}
+  .flyer+header img{display:none}
   .badge{display:inline-block;background:var(--carolina);color:var(--navy);font:15px var(--display);letter-spacing:.08em;padding:5px 14px;text-transform:uppercase;
     clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
   h1{font:clamp(30px,8.5vw,46px)/1.05 var(--display);text-transform:uppercase;margin:14px 0 10px;letter-spacing:.01em}
@@ -70,6 +76,10 @@
 </style>
 </head>
 <body>
+<div class="flyer">
+  <a href="img/flyer.jpg" target="_blank" rel="noopener"><img src="img/flyer.jpg" alt="GS Baseball 8U Tryouts, Spring 2027 — Sunday, Dec 6, 2026 at 2:00 PM, TC Rec Fields, 183 Charing Rd, Butler, GA; and Saturday, Dec 12, 2026 at 10:00 AM, Tattnall Square Academy Softball Fields, 111 Trojan Trail, Macon, GA. Questions? Contact Coach Kollin (478) 960-4245." width="1024" height="1536" fetchpriority="high"></a>
+  <small>Tap flyer to enlarge · Register below</small>
+</div>
 <header>
   <img src="img/gs-logo.png" alt="GS">
   <div class="badge" id="season">Tryouts</div>

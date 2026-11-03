@@ -5,7 +5,8 @@ window.TRYOUT_CONFIG = {
   SEASON: "Spring 2027",
   // Tryout sessions families can pick from — edit freely
   SESSIONS: [
-    "Sunday, Dec 6 — 2:00 PM · TC Rec Fields, Butler"
+    "Sunday, Dec 6 — 2:00 PM · TC Rec Fields, Butler",
+    "Saturday, Dec 12 — 10:00 AM · Tattnall Square Academy Softball Fields, Macon"
   ],
   // Birthdate rules per age group. Born on/after cutoff = eligible. Born earlier: the form asks the
   // grade; any of exceptionGrades with a birthdate on/after exceptionFrom = eligible (grade exception).
